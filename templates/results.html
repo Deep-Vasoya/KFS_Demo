@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flight Results</title>
+</head>
+<body>
+    <h1>Flight Results</h1>
+    {% if flights %}
+        <table>
+            <tr>
+                <th>Departure Date</th>
+                <th>Return Date</th>
+                <th>Airline</th>
+                <th>Price</th>
+                <th>Duration</th>
+                <th>Departure Time</th>
+                <th>Arrival Time</th>
+                <th>Total Time</th>
+            </tr>
+            {% for flight in flights %}
+            <tr>
+                {% for item in flight %}
+                <td>{{ item }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No flights found.</p>
+    {% endif %}
+</body>
+</html>

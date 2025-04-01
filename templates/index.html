@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kayak Flight Search</title>
+</head>
+<body>
+    <h1>Kayak Flight Search</h1>
+    <form method="POST">
+        <label for="departure">Departure Airport:</label>
+        <input type="text" name="departure" required><br><br>
+
+        <label for="arrival">Arrival Airport:</label>
+        <input type="text" name="arrival" required><br><br>
+
+        <label for="start_day">Start Day:</label>
+        <input type="number" name="start_day" min="1" max="31" required><br><br>
+
+        <label for="start_month">Start Month:</label>
+        <input type="number" name="start_month" min="1" max="12" required><br><br>
+
+        <label for="start_year">Start Year:</label>
+        <input type="number" name="start_year" required><br><br>
+
+        <label for="days_between">Days Between:</label>
+        <input type="number" name="days_between" required><br><br>
+
+        <label for="total_hours">Total Hours:</label>
+        <input type="number" name="total_hours" required><br><br>
+
+        <input type="submit" value="Search Flights">
+    </form>
+</body>
+</html>

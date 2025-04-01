@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Write Up Generator</title>
+</head>
+<body>
+    <div style="text-align: center;">
+        <img src="{{ url_for('static', filename='Orbis Logo.png') }}" alt="Logo" style="max-width: 300px;">
+    </div>
+    <h1>Write Up</h1>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+        <label for="currency">Select Currency:</label>
+        <select name="currency" id="currency">
+            <option value="£">£ (GBP)</option>
+            <option value="$">$ (USD)</option>
+        </select>
+        <br><br>
+        <input type="file" name="file">
+        <br><br>
+        <label for="from_price">From:</label>
+        <input type="number" name="from_price" id="from_price">
+        <label for="to_price">To:</label>
+        <input type="number" name="to_price" id="to_price">
+        <br><br>
+        <input type="submit" value="Upload">
+    </form>
+    {% if word_file %}
+        <p>Word file generated!</p>
+        <a href="/download/{{ word_file }}">
+            <button>Download</button>
+        </a>
+    {% endif %}
+</body>
+</html>
