@@ -19,8 +19,8 @@ departure_airport = "JFK"
 arrival_airport = "DPS"
 
 # Date Range
-start_date = datetime(2025, 4, 1)
-end_date = datetime(2026, 3, 31)
+start_date = datetime(2025, 5, 1)
+end_date = datetime(2025, 5, 30)
 
 all_flights = []
 
@@ -39,7 +39,7 @@ while start_date <= end_date:
         time.sleep(30)  # Static wait for 30 seconds
 
         # Now, try to find the flight results.
-        WebDriverWait(driver, random.randint(25, 35)).until(
+        WebDriverWait(driver, random.randint(30, 40)).until(
             EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'nrc6')]"))
         )
         cheapest_flight = driver.find_element(By.XPATH, "(//div[contains(@class, 'nrc6')])[1]")

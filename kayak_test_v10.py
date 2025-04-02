@@ -78,7 +78,7 @@ def main():
     departure_airport = "JFK"
     arrival_airport = "DPS"
     start_date = datetime(2025, 5, 1)
-    end_date = datetime(2025, 6,1 )
+    end_date = datetime(2025, 5, 30)
     all_flights = []
     driver = setup_driver()
 
