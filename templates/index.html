@@ -1,33 +1,436 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>Kayak Flight Search</title>
-</head>
-<body>
-    <h1>Kayak Flight Search</h1>
+  <head>
+    <title>Kayak Flight Scraper</title>
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='favicon.ico') }}"
+      type="image/x-icon"
+    />
+    <style>
+      /* Your existing CSS styles */
+      body {
+        font-family: sans-serif;
+        margin: 20px;
+        background-color: #f4f4f4;
+        color: #333;
+      }
+
+      .header-container {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start; /* Center items horizontally */
+        margin-bottom: 20px;
+      }
+
+      .logo {
+        max-height: 40px; /* Adjust as needed */
+        margin-right: 15px;
+      }
+
+      h1 {
+        color: #8e2157;
+        margin-left: 0; /* Push the title to the center (after the logo) */
+        margin-bottom: 0; /* Remove default margin as it's handled by header-container */
+      }
+
+      form {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: grid;
+        grid-template-columns: auto auto;
+        gap: 15px 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #555;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      input[type="date"],
+      select {
+        width: 90%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+
+      input[type="checkbox"],
+      input[type="radio"] {
+        margin-right: 5px;
+      }
+
+      .country-select-container {
+        grid-column: 1 / span 2;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .country-select {
+        display: flex;
+        align-items: center;
+      }
+
+      .country-select label {
+        display: inline-block;
+        margin-right: 10px;
+      }
+
+      .optional {
+        font-style: italic;
+        color: #777;
+      }
+
+      button[type="submit"] {
+        grid-column: 1 / span 2;
+        padding: 12px 20px;
+        background-color: #8e2157;
+        color: white;
+        border: none;
+        border-radius: 30px;
+        cursor: pointer;
+        width: 150px;
+        margin: 20px auto 0;
+        display: block;
+        font-size: 1em;
+        transition: background-color 0.3s ease;
+      }
+
+      button[type="submit"]:hover {
+        background-color: #0056b3;
+      }
+
+      .error {
+        color: red;
+        grid-column: 1 / span 2;
+        margin-top: 10px;
+        text-align: center;
+      }
+
+      #loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        backdrop-filter: blur(5px);
+      }
+
+      /* #animation-container {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 20px;
+      } */
+
+      .loading-image {
+        max-width: 100%;
+        height: auto;
+      }
+
+      .loading-text {
+        color: white;
+        font-size: 1.1em;
+        text-align: center;
+      }
+
+      .optional-fields {
+        transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        overflow: hidden;
+      }
+
+      .optional-fields.hidden {
+        max-height: 0;
+        opacity: 0;
+      }
+
+      .mode-buttons {
+        display: flex;
+        gap: 10px;
+      }
+
+      .mode-button {
+        padding: 8px 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        background-color: #f8f8f8;
+        color: #333;
+        transition: background-color 0.3s ease;
+      }
+
+      .mode-button.active {
+        background-color: #8e2157;
+        color: white;
+        border-color: #8e2157;
+      }
+    </style>
+    <script>
+      function updateArrivalAirports(selectId, airports) {
+        const arrivalAirportSelect = document.getElementById(selectId);
+        arrivalAirportSelect.innerHTML =
+          '<option value="">-- Select --</option>';
+        airports.forEach((airport) => {
+          const option = document.createElement("option");
+          option.value = airport;
+          option.textContent = airport;
+          arrivalAirportSelect.appendChild(option);
+        });
+      }
+
+      function updateAirportOptions() {
+        const country = document.querySelector(
+          'input[name="country"]:checked'
+        ).value;
+        let usaAirports = [
+          "JFK",
+          "EWR",
+          "BOS",
+          "MIA",
+          "MCO",
+          "ORD",
+          "IAH",
+          "IAD",
+          "DEN",
+          "DTW",
+          "PHL",
+          "LAS",
+          "LAX",
+          "SFO",
+          "ATL",
+          "DFW",
+          "SWF",
+        ];
+        let canadaAirports = ["YYZ", "YVR", "YOW", "YUL", "YHZ", "YEG", "YYC"];
+        if (country === "USA") {
+          updateArrivalAirports("arrival_airport_optional", usaAirports);
+          updateDepartureAirports("departure_airport", usaAirports);
+        } else if (country === "Canada") {
+          updateArrivalAirports("arrival_airport_optional", canadaAirports);
+          updateDepartureAirports("departure_airport", canadaAirports);
+        }
+      }
+
+      function updateDepartureAirports(selectId, airports) {
+        const departureAirportSelect = document.getElementById(selectId);
+        departureAirportSelect.innerHTML =
+          '<option value="">-- Select --</option>';
+        airports.forEach((airport) => {
+          const option = document.createElement("option");
+          option.value = airport;
+          option.textContent = airport;
+          departureAirportSelect.appendChild(option);
+        });
+      }
+
+      function setTodayAsMinDate() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        const todayFormatted = `${year}-${month}-${day}`;
+        document.getElementById("date_from").min = todayFormatted;
+        document.getElementById("date_to").min = todayFormatted;
+      }
+
+      function updateReturnDateMin() {
+        const departureDate = document.getElementById("date_from").value;
+        document.getElementById("date_to").min = departureDate;
+        if (document.getElementById("date_to").value < departureDate) {
+          document.getElementById("date_to").value = "";
+        }
+      }
+
+      function showLoading() {
+        document.getElementById("loading-overlay").style.display = "flex";
+        return true;
+      }
+
+      function toggleOptionalFields(mode) {
+        const optionalDepartureContainer = document.getElementById(
+          "departure_airport_optional_container"
+        );
+        const optionalArrivalContainer = document.getElementById(
+          "arrival_airport_optional_container"
+        );
+        const returnButton = document.getElementById("returnButton");
+        const multiButton = document.getElementById("multiButton");
+
+        if (mode === "return") {
+          optionalDepartureContainer.classList.add("hidden");
+          optionalArrivalContainer.classList.add("hidden");
+          returnButton.classList.add("active");
+          multiButton.classList.remove("active");
+        } else if (mode === "multi") {
+          optionalDepartureContainer.classList.remove("hidden");
+          optionalArrivalContainer.classList.remove("hidden");
+          returnButton.classList.remove("active");
+          multiButton.classList.add("active");
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const usaRadio = document.getElementById("usa");
+        usaRadio.checked = true;
+        updateAirportOptions();
+        updateDepartureAirports("departure_airport", [
+          "JFK",
+          "EWR",
+          "BOS",
+          "MIA",
+          "MCO",
+          "ORD",
+          "IAH",
+          "IAD",
+          "DEN",
+          "DTW",
+          "PHL",
+          "LAS",
+          "LAX",
+          "SFO",
+          "ATL",
+          "DFW",
+          "SWF",
+        ]);
+        setTodayAsMinDate();
+        document
+          .getElementById("date_from")
+          .addEventListener("change", updateReturnDateMin);
+
+        const flightForm = document.querySelector("form");
+        flightForm.addEventListener("submit", showLoading);
+
+        // Initialize with Return mode active
+        toggleOptionalFields("return");
+      });
+    </script>
+  </head>
+  <body>
+    <div class="header-container">
+      <img
+        src="{{ url_for('static', filename='Orbis Logo.png') }}"
+        alt="Orbis Logo"
+        class="logo"
+      />
+      <h1 style="flex-grow: 1; text-align: center">Kayak Flight Scraper</h1>
+    </div>
     <form method="POST">
-        <label for="departure">Departure Airport:</label>
-        <input type="text" name="departure" required><br><br>
-
-        <label for="arrival">Arrival Airport:</label>
-        <input type="text" name="arrival" required><br><br>
-
-        <label for="start_day">Start Day:</label>
-        <input type="number" name="start_day" min="1" max="31" required><br><br>
-
-        <label for="start_month">Start Month:</label>
-        <input type="number" name="start_month" min="1" max="12" required><br><br>
-
-        <label for="start_year">Start Year:</label>
-        <input type="number" name="start_year" required><br><br>
-
-        <label for="days_between">Days Between:</label>
-        <input type="number" name="days_between" required><br><br>
-
-        <label for="total_hours">Total Hours:</label>
-        <input type="number" name="total_hours" required><br><br>
-
-        <input type="submit" value="Search Flights">
+      <div class="country-select-container">
+        <div class="country-select">
+          <label>Select Country:</label>
+          <input
+            type="radio"
+            name="country"
+            id="usa"
+            value="USA"
+            onclick="updateAirportOptions()"
+          />
+          USA
+          <input
+            type="radio"
+            name="country"
+            id="canada"
+            value="Canada"
+            onclick="updateAirportOptions()"
+          />
+          Canada
+        </div>
+        <div class="mode-buttons">
+          <button
+            type="button"
+            class="mode-button active"
+            id="returnButton"
+            onclick="toggleOptionalFields('return')"
+          >
+            Return
+          </button>
+          <button
+            type="button"
+            class="mode-button"
+            id="multiButton"
+            onclick="toggleOptionalFields('multi')"
+          >
+            Multi Destination
+          </button>
+        </div>
+      </div>
+      <div>
+        <label for="departure_airport">Departure Airport:</label>
+        <select name="departure_airport" id="departure_airport" required>
+          <option value="">-- Select --</option>
+        </select>
+      </div>
+      <div>
+        <label for="arrival_airport">Arrival Airport:</label>
+        <input type="text" name="arrival_airport" required />
+      </div>
+      <div id="departure_airport_optional_container" class="optional-fields">
+        <label for="departure_airport_optional"
+          >Departure Airport <span class="optional">(Optional)</span>:</label
+        >
+        <input type="text" name="departure_airport_optional" />
+      </div>
+      <div id="arrival_airport_optional_container" class="optional-fields">
+        <label for="arrival_airport_optional"
+          >Arrival Airport <span class="optional">(Optional)</span>:</label
+        >
+        <select name="arrival_airport_optional" id="arrival_airport_optional">
+          <option value="">-- Select --</option>
+        </select>
+      </div>
+      <div>
+        <label for="date_from">Date From:</label>
+        <input type="date" name="date_from" id="date_from" required />
+      </div>
+      <div>
+        <label for="date_to">Date To:</label>
+        <input type="date" name="date_to" id="date_to" required />
+      </div>
+      <div>
+        <label for="nights">Nights (Stay Duration):</label>
+        <input type="number" name="nights" value="7" required />
+      </div>
+      <div>
+        <label for="flight_hours">Maximum Flight Hours:</label>
+        <input type="number" name="flight_hours" value="24" required />
+      </div>
+      <div class="stops-container">
+        <label>Stops:</label><br />
+        <input type="checkbox" name="stops" value="0" checked /> Nonstop
+        <input type="checkbox" name="stops" value="1" /> 1 Stop
+        <input type="checkbox" name="stops" value="2" /> 2 Stops
+      </div>
+      <button type="submit">Scrape Flights</button>
     </form>
-</body>
+
+    {% if error %}
+    <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <div id="loading-overlay">
+      <div id="animation-container">
+        <img
+          src="{{ url_for('static', filename='loading_animation.gif') }}"
+          alt="Loading..."
+          class="loading-image"
+        />
+      </div>
+      <p class="loading-text">Scraping flights, please wait...</p>
+    </div>
+  </body>
 </html>
