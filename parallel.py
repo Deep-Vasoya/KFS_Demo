@@ -15,8 +15,10 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Alignment, Font, Border, Side
 import threading
 from queue import Queue
+import os  # Import the os module
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = '.'  # Set the directory to save Excel files
 
 def random_delay(min_sec=1, max_sec=2):
     """Random delay between actions"""
@@ -353,19 +355,13 @@ def index():
 
     return render_template('index.html', usa_airports=usa_airports, canada_airports=canada_airports, selected_country=selected_country)
 
-@app.route('/download_results')
-def download_results():
-    import os
-    files = [f for f in os.listdir('.') if f.startswith('kayak_flights')]
-    if files:
-        latest_file = max(files, key=os.path.getctime)
-        try:
-            return send_file(latest_file, as_attachment=True, download_name=latest_file)
-        except FileNotFoundError:
-            return "Error: Results file not found."
-    else:
-        return "Error: No results file found."
-
+@app.route('/download/<filename>')
+def download_file(filename):
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    try:
+        return send_file(filepath, as_attachment=True, download_name=filename)
+    except FileNotFoundError:
+        return "Error: File not found.", 404
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
