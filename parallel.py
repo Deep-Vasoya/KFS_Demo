@@ -156,9 +156,9 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
         if country == 'Canada':
             base_url = "https://www.ca.kayak.com/flights"
 
-        url = f"{base_url}/{departure_airport}-{arrival_airport}/{date_from_str}/{date_to_str}/2adults?sort=price_a&fs=legdur<={flight_hours * 60}{stops_param};virtualinterline=-virtualinterline;airportchange=-airportchange"
+        url = f"{base_url}/{departure_airport}-{arrival_airport}/{date_from_str}/{date_to_str}/2adults?sort=price_a&fs=legdur=-{flight_hours * 60}{stops_param};virtualinterline=-virtualinterline;airportchange=-airportchange"
         if country in ['USA', 'Canada'] and departure_airport_optional and arrival_airport_optional:
-            url = f"{base_url}/{departure_airport}-{arrival_airport}/{date_from_str}/{departure_airport_optional}-{arrival_airport_optional}/{date_to_str}/2adults?sort=price_a&fs=legdur<={flight_hours * 60}{stops_param};virtualinterline=-virtualinterline;airportchange=-airportchange"
+            url = f"{base_url}/{departure_airport}-{arrival_airport}/{date_from_str}/{departure_airport_optional}-{arrival_airport_optional}/{date_to_str}/2adults?sort=price_a&fs=legdur=-{flight_hours * 60}{stops_param};virtualinterline=-virtualinterline;airportchange=-airportchange"
 
         print(f"[Thread {threading.get_ident()}] Accessing: {url}")
         driver.get(url)
