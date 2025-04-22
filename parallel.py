@@ -15,7 +15,7 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Alignment, Font, Border, Side
 import threading
 from queue import Queue
-import os  # Import the os module
+import os
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = '.'  # Set the directory to save Excel files
@@ -224,7 +224,7 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
 
         excel_arrival_airport = arrival_airport
         if departure_airport_optional and arrival_airport_optional:
-            excel_arrival_airport = f"{arrival_airport} x {arrival_airport_optional}"
+            excel_arrival_airport = f"{arrival_airport} x {departure_airport_optional}"
 
         flight_data = {
             'Date': formatted_date,
@@ -348,7 +348,7 @@ def index():
                 cell.number_format = 'DD-MMM-YY'
 
             wb.save(output_file)
-            print(f"💾 Saved parallel results to {output_file}")
+            print(f"💾 Saved results to {output_file}")
             return render_template('results.html', output_file=output_file)
         else:
             return render_template('results.html')

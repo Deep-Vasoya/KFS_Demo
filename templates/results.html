@@ -69,7 +69,9 @@
       {% if output_file %}
       <p>
         Your flight data has been successfully scraped and saved to:
-        <a href="{{ url_for('download_file', filename=output_file) }}" class="download-link"
+        <a
+          href="{{ url_for('download_file', filename=output_file) }}"
+          class="download-link"
           ><code>{{ output_file }}</code></a
         >
       </p>
