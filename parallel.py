@@ -40,7 +40,7 @@ def human_like_interaction(driver):
             driver.execute_script(f"window.scrollBy(0, {scroll_amount})")
             time.sleep(random.uniform(0.5, 1.5))
     except Exception as e:
-        print(f"Interaction simulation failed: {str(e)}")
+        print(f"❌ Interaction simulation failed: {str(e)}")
 
 
 def setup_driver():
@@ -98,7 +98,7 @@ def handle_possible_blocking(driver, current_url):
         try:
             WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.XPATH, indicator)))
-            print("⚠ Human verification detected. Clearing cookies and retrying after 1 minute...")
+            print("⚠️ Human verification detected. Clearing cookies and retrying after 1 minute...")
 
             # Clear cookies and storage
             driver.delete_all_cookies()
@@ -167,7 +167,7 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
 
         blocked, driver = handle_possible_blocking(driver, url)
         if blocked:
-            print(f"[Thread {threading.get_ident()}] Retrying after block resolution for {date_from_str}...")
+            print(f"[Thread {threading.get_ident()}] 🔄 Retrying after block resolution for {date_from_str}...")
             random_delay(5, 10)
 
         try:
@@ -178,7 +178,7 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
                 WebDriverWait(driver, 15).until(
                     EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'prices')]")))
             except:
-                print(f"[Thread {threading.get_ident()}] Timed out waiting for flight results for {date_from_str}")
+                print(f"[Thread {threading.get_ident()}] ⏰ Timed out waiting for flight results for {date_from_str}")
                 driver_queue.put(driver)
                 return
 
@@ -189,7 +189,7 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
 
         flights = driver.find_elements(By.XPATH, "//div[contains(@class, 'nrc6')]")
         if not flights:
-            print(f"[Thread {threading.get_ident()}] No flights found on page for {date_from_str}")
+            print(f"[Thread {threading.get_ident()}] 🤷🏻‍♂️ No flights found on page for {date_from_str}")
             driver_queue.put(driver)
             return
 
@@ -237,13 +237,13 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
             'Arrival Time': duration2
         }
 
-        print(f"[Thread {threading.get_ident()}] Found flight: {flight_data['Airline']} for {flight_data['Price']} on {formatted_date}")
+        print(f"[Thread {threading.get_ident()}] 🔍 Found flight: {flight_data['Airline']} for {flight_data['Price']} on {formatted_date}")
         results_queue.put(flight_data)
 
         driver_queue.put(driver)
 
     except Exception as e:
-        print(f"[Thread {threading.get_ident()}] Error scraping interval starting {start_date}: {e}")
+        print(f"[Thread {threading.get_ident()}] ⚠️ Error scraping interval starting {start_date}: {e}")
         if driver:
             driver_queue.put(driver)
 
@@ -321,16 +321,16 @@ def index():
                 driver = driver_queue.get()
                 driver.quit()
             except Exception as e:
-                print(f"Error quitting driver: {e}")
+                print(f"⚠️ Error quitting driver: {e}")
 
-        print(f"Total number of flights found across all intervals: {len(all_flights)}")
+        print(f"✈️ Total number of flights found across all intervals: {len(all_flights)}")
 
         if all_flights:
             # Save to Excel
             df = pd.DataFrame(all_flights)
             df['Date'] = pd.to_datetime(df['Date'], format='%d-%b-%y')
-            output_file = f"kayak_flights{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-
+            output_file = f"{departure_airport.upper()}-{arrival_airport.upper()}{f'_x_{departure_airport_optional.upper()}' if 'departure_airport_optional' in locals() and departure_airport_optional and 'arrival_airport_optional' in locals() and arrival_airport_optional else ''}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            
             wb = Workbook()
             ws = wb.active
             thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
