@@ -20,6 +20,7 @@ import os
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = '.'  # Set the directory to save Excel files
 
+
 def random_delay(min_sec=1, max_sec=2):
     """Random delay between actions"""
     time.sleep(random.uniform(min_sec, max_sec))
@@ -39,7 +40,7 @@ def human_like_interaction(driver):
             scroll_amount = random.randint(200, 600)
             driver.execute_script(f"window.scrollBy(0, {scroll_amount})")
             time.sleep(random.uniform(0.5, 1.5))
-    except Exception as e:
+    except (WebDriverException, Exception) as e:
         print(f"❌ Interaction simulation failed: {str(e)}")
 
 
@@ -118,7 +119,7 @@ def handle_possible_blocking(driver, current_url):
             random_delay(1, 2)
 
             return True, driver
-        except:
+        except TimeoutException:
             continue
 
     return False, driver
@@ -126,6 +127,7 @@ def handle_possible_blocking(driver, current_url):
 
 def scrape_flight_data_interval(driver_queue, results_queue, search_params, start_date):
     """Scrape flight data for a specific interval."""
+    driver = None
     try:
         driver = driver_queue.get()
         nights = int(search_params['nights'])
@@ -169,18 +171,20 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
         if blocked:
             print(f"[Thread {threading.get_ident()}] 🔄 Retrying after block resolution for {date_from_str}...")
             random_delay(5, 10)
+            driver_queue.put(driver)
+            return
+
+        load_timeout = random.randint(50, 55)  # Give it a buffer beyond the observed load time
+        progress_bar_xpath_loaded = "//div[@class='skp2 skp2-hidden skp2-inlined' and @role='progressbar']"
 
         try:
-            WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'nrc6')]")))
+            WebDriverWait(driver, load_timeout).until(
+                EC.presence_of_element_located((By.XPATH, progress_bar_xpath_loaded)))
+            print(f"[Thread {threading.get_ident()}] ✅ Progress bar hidden - page loaded.")
         except TimeoutException:
-            try:
-                WebDriverWait(driver, 15).until(
-                    EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'prices')]")))
-            except:
-                print(f"[Thread {threading.get_ident()}] ⏰ Timed out waiting for flight results for {date_from_str}")
-                driver_queue.put(driver)
-                return
+            print(f"[Thread {threading.get_ident()}] ⚠️ Timeout waiting for progress bar to be hidden.")
+            driver_queue.put(driver)
+            return
 
         for _ in range(2):
             scroll_amount = random.randint(200, 500)
@@ -201,7 +205,7 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
             try:
                 text = flight.find_element(By.XPATH, xpath).text.strip()
                 return text.replace('$', '').replace(',', '').strip()
-            except:
+            except NoSuchElementException:
                 return default
 
         duration_elements = flight.find_elements(By.XPATH, ".//div[contains(@class, 'xdW8')]/div[contains(@class, 'vmXl')]")
@@ -291,7 +295,7 @@ def index():
             interval_starts.append(current_date)
             current_date += timedelta(days=1)
 
-        num_threads = min(5, len(interval_starts))  # Limit to 5 threads or the number of intervals
+        num_threads = min(int(request.form.get('num_tabs', 5)), len(interval_starts))  # Limit to 5 threads or the number of intervals
         driver_queue = Queue(maxsize=num_threads)
         for _ in range(num_threads):
             driver_queue.put(setup_driver())
@@ -303,7 +307,7 @@ def index():
                                       args=(driver_queue, results_queue, search_params, start_interval))
             threads.append(thread)
             threads[-1].start()  # Start the newly added thread
-            while len(threading.enumerate()) - threading.active_count() > num_threads + 1: # +1 for the main thread
+            while len(threading.enumerate()) - threading.active_count() > num_threads + 1:  # +1 for the main thread
                 time.sleep(0.1)  # Briefly wait if too many threads are running
 
         # Wait for all threads to complete
@@ -330,7 +334,7 @@ def index():
             df = pd.DataFrame(all_flights)
             df['Date'] = pd.to_datetime(df['Date'], format='%d-%b-%y')
             output_file = f"{departure_airport.upper()}-{arrival_airport.upper()}{f'_x_{departure_airport_optional.upper()}' if 'departure_airport_optional' in locals() and departure_airport_optional and 'arrival_airport_optional' in locals() and arrival_airport_optional else ''}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-            
+
             wb = Workbook()
             ws = wb.active
             thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
@@ -355,13 +359,15 @@ def index():
 
     return render_template('index.html', usa_airports=usa_airports, canada_airports=canada_airports, selected_country=selected_country)
 
+
 @app.route('/download/<filename>')
 def download_file(filename):
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    filepath = os.path.join(str(app.config['UPLOAD_FOLDER']), str(filename))
     try:
         return send_file(filepath, as_attachment=True, download_name=filename)
     except FileNotFoundError:
         return "Error: File not found.", 404
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
