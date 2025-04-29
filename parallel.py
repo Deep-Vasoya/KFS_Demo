@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, url_for
+from flask import Flask, render_template, request, send_file
 import sys
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
@@ -174,13 +174,15 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
             driver_queue.put(driver)
             return
 
-        load_timeout = random.randint(50, 55)  # Give it a buffer beyond the observed load time
+        load_timeout = random.randint(45, 48)  # Give it a buffer beyond the observed load time
         progress_bar_xpath_loaded = "//div[@class='skp2 skp2-hidden skp2-inlined' and @role='progressbar']"
 
         try:
             WebDriverWait(driver, load_timeout).until(
                 EC.presence_of_element_located((By.XPATH, progress_bar_xpath_loaded)))
             print(f"[Thread {threading.get_ident()}] ✅ Progress bar hidden - page loaded.")
+            time.sleep(1)  # Wait for 1 second after loading
+
         except TimeoutException:
             print(f"[Thread {threading.get_ident()}] ⚠️ Timeout waiting for progress bar to be hidden.")
             driver_queue.put(driver)
