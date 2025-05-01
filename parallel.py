@@ -18,7 +18,7 @@ from queue import Queue
 import os
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = '.'  # Set the directory to save Excel files
+app.config['UPLOAD_FOLDER'] = '.'
 
 
 def random_delay(min_sec=1, max_sec=2):
@@ -65,7 +65,6 @@ def setup_driver():
             use_subprocess=True
         )
 
-        # Remove webdriver flag and add fake plugins
         driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
             "source": """
                 Object.defineProperty(navigator, 'webdriver', {
@@ -106,14 +105,11 @@ def handle_possible_blocking(driver, current_url):
             driver.execute_script("window.localStorage.clear();")
             driver.execute_script("window.sessionStorage.clear();")
 
-            # Wait for 1 minute
             time.sleep(60)
 
-            # Recreate a driver with a fresh session
             driver.quit()
             driver = setup_driver()
 
-            # Retry the request
             driver.get(current_url)
             human_like_interaction(driver)
             random_delay(1, 2)
@@ -174,14 +170,14 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
             driver_queue.put(driver)
             return
 
-        load_timeout = random.randint(45, 48)  # Give it a buffer beyond the observed load time
+        load_timeout = random.randint(45, 48)
         progress_bar_xpath_loaded = "//div[@class='skp2 skp2-hidden skp2-inlined' and @role='progressbar']"
 
         try:
             WebDriverWait(driver, load_timeout).until(
                 EC.presence_of_element_located((By.XPATH, progress_bar_xpath_loaded)))
             print(f"[Thread {threading.get_ident()}] ✅ Progress bar hidden - page loaded.")
-            time.sleep(1)  # Wait for 1 second after loading
+            time.sleep(1)
 
         except TimeoutException:
             print(f"[Thread {threading.get_ident()}] ⚠️ Timeout waiting for progress bar to be hidden.")
@@ -297,7 +293,7 @@ def index():
             interval_starts.append(current_date)
             current_date += timedelta(days=1)
 
-        num_threads = min(int(request.form.get('num_tabs', 5)), len(interval_starts))  # Limit to 5 threads or the number of intervals
+        num_threads = min(int(request.form.get('num_tabs', 5)), len(interval_starts))
         driver_queue = Queue(maxsize=num_threads)
         for _ in range(num_threads):
             driver_queue.put(setup_driver())
@@ -305,14 +301,12 @@ def index():
         threads = []
 
         for start_interval in interval_starts:
-            thread = threading.Thread(target=scrape_flight_data_interval,
-                                      args=(driver_queue, results_queue, search_params, start_interval))
+            thread = threading.Thread(target=scrape_flight_data_interval, args=(driver_queue, results_queue, search_params, start_interval))
             threads.append(thread)
-            threads[-1].start()  # Start the newly added thread
-            while len(threading.enumerate()) - threading.active_count() > num_threads + 1:  # +1 for the main thread
-                time.sleep(0.1)  # Briefly wait if too many threads are running
+            threads[-1].start()
+            while len(threading.enumerate()) - threading.active_count() > num_threads + 1:
+                time.sleep(0.1)
 
-        # Wait for all threads to complete
         for thread in threads:
             thread.join()
 
@@ -321,7 +315,6 @@ def index():
             if flight_data:
                 all_flights.append(flight_data)
 
-        # Quit all drivers
         while not driver_queue.empty():
             try:
                 driver = driver_queue.get()
@@ -332,10 +325,9 @@ def index():
         print(f"✈️ Total number of flights found across all intervals: {len(all_flights)}")
 
         if all_flights:
-            # Save to Excel
             df = pd.DataFrame(all_flights)
             df['Date'] = pd.to_datetime(df['Date'], format='%d-%b-%y')
-            output_file = f"{departure_airport.upper()}-{arrival_airport.upper()}{f'_x_{departure_airport_optional.upper()}' if 'departure_airport_optional' in locals() and departure_airport_optional and 'arrival_airport_optional' in locals() and arrival_airport_optional else ''}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            output_file = f"{departure_airport.upper()} - {arrival_airport.upper()}{f' x {departure_airport_optional.upper()}' if 'departure_airport_optional' in locals() and departure_airport_optional and 'arrival_airport_optional' in locals() and arrival_airport_optional else ''}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
             wb = Workbook()
             ws = wb.active

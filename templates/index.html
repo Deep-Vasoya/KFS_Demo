@@ -14,7 +14,6 @@
       rel="stylesheet"
     />
     <style>
-      /* Your existing CSS styles */
       body {
         font-family: Julius Sans One, sans-serif;
         margin: 20px;
@@ -44,19 +43,18 @@
       .header-container {
         display: flex;
         align-items: center;
-        justify-content: flex-start; /* Center items horizontally */
+        justify-content: flex-start;
         margin-bottom: 20px;
       }
 
       .logo {
-        max-height: 40px; /* Adjust as needed */
+        max-height: 40px;
         margin-right: 15px;
       }
 
       h1 {
         color: #8e2157;
-        margin-left: 0; /* Push the title to the center (after the logo) */
-        margin-bottom: 0; /* Remove default margin as it's handled by header-container */
+        margin-bottom: inherit;
       }
 
       form {
@@ -205,34 +203,31 @@
         border-color: #8e2157;
       }
 
-      /* --- Styles for Larger Radio Buttons --- */
       input[type="radio"] {
-        width: 20px; /* Increased size */
-        height: 20px; /* Increased size */
-        border-width: 2px; /* Thicker border */
+        width: 20px;
+        height: 20px;
+        border-width: 2px;
       }
 
       input[type="radio"]:checked::before {
-        width: 12px; /* Adjust the size of the inner circle */
-        height: 12px; /* Adjust the size of the inner circle */
+        width: 12px;
+        height: 12px;
       }
 
-      /* --- Styles for Larger Checkboxes --- */
       input[type="checkbox"] {
-        width: 20px; /* Increased size */
-        height: 20px; /* Increased size */
-        border-width: 2px; /* Thicker border */
+        width: 20px;
+        height: 20px;
+        border-width: 2px;
       }
 
       .stops-group input[type="checkbox"] {
-        /* Apply to the stops group specifically */
         width: 20px;
         height: 20px;
         border-width: 2px;
       }
 
       .stops-group input[type="checkbox"]:checked::before {
-        font-size: 16px; /* Larger checkmark */
+        font-size: 16px;
       }
     </style>
     <script>
@@ -370,7 +365,6 @@
         const flightForm = document.querySelector("form");
         flightForm.addEventListener("submit", showLoading);
 
-        // Initialize with Return mode active
         toggleOptionalFields("return");
       });
     </script>
@@ -382,8 +376,8 @@
         alt="Orbis Logo"
         class="logo"
       />
-      <h1 style="flex-grow: 1; text-align: center">Kayak Flight Scraper</h1>
     </div>
+    <h1 style="flex-grow: 1; text-align: center">Kayak Flight Scraper</h1>
     <form method="POST">
       <div class="country-select-container">
         <div class="country-select">
@@ -481,7 +475,6 @@
           max="12"
         />
       </div>
-      <br /><br />
       <button type="submit" onclick="startTimer()">Scrape Flights</button>
     </form>
 
