@@ -199,7 +199,7 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
         driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth'});", flight)
         random_delay(1, 2)
 
-        def safe_extract(xpath, default="Unknown"):
+        def safe_extract(xpath, default="-"):
             try:
                 text = flight.find_element(By.XPATH, xpath).text.strip()
                 return text.replace('$', '').replace(',', '').strip()
@@ -207,8 +207,8 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
                 return default
 
         duration_elements = flight.find_elements(By.XPATH, ".//div[contains(@class, 'xdW8')]/div[contains(@class, 'vmXl')]")
-        duration1 = duration_elements[0].text.strip() if len(duration_elements) > 0 else "Unknown"
-        duration2 = duration_elements[1].text.strip() if len(duration_elements) > 1 else "Unknown"
+        duration1 = duration_elements[0].text.strip() if len(duration_elements) > 0 else "-"
+        duration2 = duration_elements[1].text.strip() if len(duration_elements) > 1 else "-"
 
         month_name = start_date.strftime('%B')
         formatted_month = month_name[:3]
