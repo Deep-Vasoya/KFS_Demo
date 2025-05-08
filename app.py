@@ -45,8 +45,14 @@ def human_like_interaction(driver):
 
 
 def setup_driver():
-    """Configure Chrome with maximum stealth settings"""
     options = uc.ChromeOptions()
+    buster_extension_path = r"C:\Users\ASUS TUF\AppData\Local\Google\Chrome\User Data\Default\Extensions\mpbjkejclgfgadiemmefgebjfooflfhl\3.1.0_0"
+
+    if not os.path.exists(buster_extension_path):
+        print(f"❌ Extension path does not exist: {buster_extension_path}")
+        sys.exit(1)
+
+    options.add_argument(f"--load-extension={buster_extension_path}")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-infobars")
     options.add_argument("--disable-notifications")
