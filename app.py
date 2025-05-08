@@ -172,7 +172,7 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
         blocked, driver = handle_possible_blocking(driver, url)
         if blocked:
             print(f"[Thread {threading.get_ident()}] 🔄 Retrying after block resolution for {date_from_str}...")
-            random_delay(5, 10)
+            random_delay(18, 22)
             driver_queue.put(driver)
             return
 
