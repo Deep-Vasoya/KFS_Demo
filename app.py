@@ -16,24 +16,27 @@ from openpyxl.styles import Alignment, Font, Border, Side
 import threading
 from queue import Queue
 import os
+import queue
+no_result_dates = set()
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = '.'
 
 
 def random_delay(min_sec=1, max_sec=2):
-    """Random delay between actions"""
     time.sleep(random.uniform(min_sec, max_sec))
 
 
 def human_like_interaction(driver):
-    """Simulate human mouse movements and pauses"""
     try:
         action = ActionChains(driver)
         for _ in range(random.randint(1, 5)):
             x = random.randint(-50, 50)
             y = random.randint(-50, 50)
-            action.move_by_offset(x, y).perform()
+            try:
+                action.move_by_offset(x, y).perform()
+            except Exception as e:
+                print(f"❌ Mouse move failed: {str(e).splitlines()[0]}")
             time.sleep(random.uniform(0.1, 0.3))
 
         if random.random() > 0.3:
@@ -41,7 +44,7 @@ def human_like_interaction(driver):
             driver.execute_script(f"window.scrollBy(0, {scroll_amount})")
             time.sleep(random.uniform(0.5, 1.5))
     except (WebDriverException, Exception) as e:
-        print(f"❌ Interaction simulation failed: {str(e)}")
+        print(f"❌ Interaction simulation failed: {str(e).splitlines()[0]}")
 
 
 def setup_driver():
@@ -56,7 +59,6 @@ def setup_driver():
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-infobars")
     options.add_argument("--disable-notifications")
-
     user_agents = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36"
@@ -86,12 +88,11 @@ def setup_driver():
         })
         return driver
     except Exception as e:
-        print(f"❌ Failed to initialize WebDriver: {str(e)}")
+        print(f"❌ Failed to initialize WebDriver: {str(e).splitlines()[0]}")
         sys.exit(1)
 
 
 def handle_possible_blocking(driver, current_url):
-    """Enhanced blocking handler with cookie clearing and retry"""
     blocking_indicators = [
         "//div[contains(text(), 'Access Denied')]",
         "//div[contains(text(), 'Checking your browser')]",
@@ -102,33 +103,25 @@ def handle_possible_blocking(driver, current_url):
 
     for indicator in blocking_indicators:
         try:
-            WebDriverWait(driver, 5).until(
+            WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, indicator)))
             print("⚠️ Human verification detected. Clearing cookies and retrying after 1 minute...")
-
-            # Clear cookies and storage
             driver.delete_all_cookies()
             driver.execute_script("window.localStorage.clear();")
             driver.execute_script("window.sessionStorage.clear();")
-
             time.sleep(60)
-
             driver.quit()
             driver = setup_driver()
-
             driver.get(current_url)
             human_like_interaction(driver)
             random_delay(1, 2)
-
             return True, driver
         except TimeoutException:
             continue
-
     return False, driver
 
 
 def scrape_flight_data_interval(driver_queue, results_queue, search_params, start_date):
-    """Scrape flight data for a specific interval."""
     driver = None
     try:
         driver = driver_queue.get()
@@ -136,7 +129,6 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
         end_date_interval = start_date + timedelta(days=nights)
         date_from_str = start_date.strftime('%Y-%m-%d')
         date_to_str = end_date_interval.strftime('%Y-%m-%d')
-
         departure_airport = search_params['departure_airport']
         arrival_airport = search_params['arrival_airport']
         stops = search_params['stops']
@@ -173,8 +165,6 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
         if blocked:
             print(f"[Thread {threading.get_ident()}] 🔄 Retrying after block resolution for {date_from_str}...")
             random_delay(18, 22)
-            driver_queue.put(driver)
-            return
 
         load_timeout = random.randint(45, 48)
         progress_bar_xpath_loaded = "//div[@class='skp2 skp2-hidden skp2-inlined' and @role='progressbar']"
@@ -185,9 +175,26 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
             print(f"[Thread {threading.get_ident()}] ✅ Progress bar hidden - page loaded.")
             time.sleep(1)
 
+            try:
+                no_results = WebDriverWait(driver, 8).until(
+                    EC.presence_of_element_located((By.XPATH, "//div[@class='c8MCw-header-text' and contains(text(), 'No matching results found.')]")))
+                if no_results:
+                    print(f"[Thread {threading.get_ident()}] ⚠️ No flights available for {date_from_str}. Skipping.")
+                    no_result_dates.add(start_date)
+                    try:
+                        driver_queue.put(driver)
+                    except queue.Full as e:
+                        print(f"⚠️ Driver queue full: {str(e).splitlines()[0]}")
+                        driver.quit()
+                    except Exception as e:
+                        print(f"⚠️ Failed to return driver to queue: {str(e).splitlines()[0]}")
+                        driver.quit()
+                    return
+            except TimeoutException:
+                pass
         except TimeoutException:
             print(f"[Thread {threading.get_ident()}] ⚠️ Timeout waiting for progress bar to be hidden.")
-            driver_queue.put(driver)
+            driver.quit()
             return
 
         for _ in range(2):
@@ -198,7 +205,15 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
         flights = driver.find_elements(By.XPATH, "//div[contains(@class, 'nrc6')]")
         if not flights:
             print(f"[Thread {threading.get_ident()}] 🤷🏻‍♂️ No flights found on page for {date_from_str}")
-            driver_queue.put(driver)
+            no_result_dates.add(start_date)
+            try:
+                driver_queue.put(driver)
+            except queue.Full as e:
+                print(f"⚠️ Driver queue full: {str(e).splitlines()[0]}")
+                driver.quit()
+            except Exception as e:
+                print(f"⚠️ Failed to return driver to queue: {str(e).splitlines()[0]}")
+                driver.quit()
             return
 
         flight = flights[0]
@@ -228,6 +243,10 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
         price_text = safe_extract(price_xpath)
         if country == 'Canada':
             price_text = price_text.replace('C ', '')
+
+        if not price_text or not price_text.replace('.', '').isdigit():
+            raise ValueError(f"Invalid or missing price: '{price_text}'")
+
         airline = safe_extract(airline_xpath)
 
         excel_arrival_airport = arrival_airport
@@ -247,13 +266,12 @@ def scrape_flight_data_interval(driver_queue, results_queue, search_params, star
 
         print(f"[Thread {threading.get_ident()}] 🔍 Found flight: {flight_data['Airline']} for {flight_data['Price']} on {formatted_date}")
         results_queue.put(flight_data)
-
         driver_queue.put(driver)
 
     except Exception as e:
-        print(f"[Thread {threading.get_ident()}] ⚠️ Error scraping interval starting {start_date}: {e}")
+        print(f"[Thread {threading.get_ident()}] ⚠️ Error scraping interval starting {start_date}: {str(e).splitlines()[0]}")
         if driver:
-            driver_queue.put(driver)
+            driver.quit()
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -324,9 +342,10 @@ def index():
         while not driver_queue.empty():
             try:
                 driver = driver_queue.get()
+                print(f"[Thread {threading.get_ident()}] 🔁 Re-scraping for {start_date}")
                 driver.quit()
             except Exception as e:
-                print(f"⚠️ Error quitting driver: {e}")
+                print(f"⚠️ Error quitting driver: {str(e).splitlines()[0]}")
 
         print(f"✈️ Total number of flights found across all intervals: {len(all_flights)}")
 
@@ -352,7 +371,83 @@ def index():
                 cell.number_format = 'DD-MMM-YY'
 
             wb.save(output_file)
-            print(f"💾 Saved results to {output_file}")
+            print("⏳ Waiting briefly to ensure all threads completed writing...")
+            time.sleep(2)
+
+            scraped_df = pd.read_excel(output_file, engine='openpyxl')
+            print("📄 Data currently in Excel:")
+            print(scraped_df[['Date', 'Airline', 'Price']].head(10))
+
+            scraped_dates = set(scraped_df['Date'].dt.date)
+            expected_dates = set(interval_starts)
+            print("📅 Expected dates:", expected_dates)
+            print("📅 Scraped dates:", scraped_dates)
+
+            valid_expected_dates = expected_dates - no_result_dates
+            missing_dates = sorted(list(valid_expected_dates - scraped_dates))
+            print("❗ Final missing:", missing_dates)
+
+            if missing_dates:
+                print(f"🔁 Missing dates detected: {len(missing_dates)}. Re-scraping...")
+                print(f"🔁 Missing dates detected: {missing_dates}")
+                print("🔄 Starting retry scraping threads...")
+
+                driver_queue = Queue(maxsize=min(num_threads, len(missing_dates)))
+                driver_count = min(num_threads, len(missing_dates))
+
+                for i in range(driver_count):
+                    try:
+                        driver = setup_driver()
+                        driver_queue.put(driver)
+                        time.sleep(2)
+                    except Exception as e:
+                        print(f"❌ Retry driver {i + 1} failed to start: {str(e).splitlines()[0]}")
+
+                results_queue = Queue()
+                threads = []
+
+                for retry_date in missing_dates:
+                    thread = threading.Thread(target=scrape_flight_data_interval, args=(driver_queue, results_queue, search_params, retry_date))
+                    threads.append(thread)
+                    thread.start()
+
+                for thread in threads:
+                    thread.join(timeout=90)
+                    print("✅ All retry threads completed.")
+                retry_flights = []
+                while not results_queue.empty():
+                    retry_flights.append(results_queue.get())
+
+                if retry_flights:
+                    retry_df = pd.DataFrame(retry_flights)
+                    retry_df['Date'] = pd.to_datetime(retry_df['Date'], format='%d-%b-%y')
+                    df = pd.concat([df, retry_df], ignore_index=True).drop_duplicates(subset=['Date'])
+
+                    wb = Workbook()
+                    ws = wb.active
+                    for r_idx, row in enumerate(dataframe_to_rows(df, header=True, index=False)):
+                        ws.append(row)
+                        for c_idx, cell in enumerate(ws[r_idx + 1]):
+                            cell.alignment = Alignment(horizontal='center')
+                            cell.border = thin_border
+                            if r_idx == 0:
+                                cell.font = Font(bold=True)
+                    for cell in ws['A']:
+                        cell.number_format = 'DD-MMM-YY'
+                    wb.save(output_file)
+                    print(f"📦 File saved after re-scraping all dates: {output_file}")
+                    while not driver_queue.empty():
+                        try:
+                            driver = driver_queue.get()
+                            driver.quit()
+                        except Exception as e:
+                            print(f"⚠️ Error quitting retry driver: {str(e).splitlines()[0]}")
+            print(f"💾 Final results Saved to {output_file}")
+            print("➡️ Rendering results page with final output.")
+            if no_result_dates:
+                print("📭 Dates with no matching results:")
+                for d in sorted(no_result_dates):
+                    print(f"❌ {d.strftime('%d-%b-%Y')}")
             return render_template('results.html', output_file=output_file)
         else:
             return render_template('results.html')

@@ -430,11 +430,19 @@
       </div>
       <div>
         <label for="arrival_airport">Arrival Airport:</label>
-        <input type="text" name="arrival_airport" required />
+        <input
+          type="text"
+          name="arrival_airport"
+          id="arrival_airport"
+          required
+        />
       </div>
       <div id="departure_airport_optional_container" class="optional-fields">
         <label for="departure_airport_optional"
-          >Departure Airport <span class="optional">(Optional)</span>:</label
+          >Departure Airport
+          <span class="optional" id="departure_airport_optional"
+            >(Optional)</span
+          >:</label
         >
         <input type="text" name="departure_airport_optional" />
       </div>
@@ -456,11 +464,17 @@
       </div>
       <div>
         <label for="nights">Nights (Stay Duration):</label>
-        <input type="number" name="nights" value="7" required />
+        <input type="number" name="nights" value="7" id="nights" required />
       </div>
       <div>
         <label for="flight_hours">Maximum Flight Hours:</label>
-        <input type="number" name="flight_hours" value="20" required />
+        <input
+          type="number"
+          name="flight_hours"
+          value="20"
+          id="flight_hours"
+          required
+        />
       </div>
       <div class="stops-container">
         <label>Stops:</label><br />
@@ -476,10 +490,10 @@
           name="num_tabs"
           value="5"
           min="1"
-          max="12"
+          max="30"
         />
       </div>
-      <button type="submit" onclick="startTimer()">Scrape Flights</button>
+      <button type="submit">Scrape Flights</button>
     </form>
 
     {% if error %}
