@@ -64,7 +64,7 @@ def setup_driver():
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36"
     ]
     options.add_argument(f"user-agent={random.choice(user_agents)}")
-    options.add_argument(f"--window-size={random.randint(1000, 1400)},{random.randint(800, 1200)}")
+    # options.add_argument(f"--window-size={random.randint(1000, 1400)},{random.randint(800, 1200)}")
 
     try:
         driver = uc.Chrome(
@@ -72,6 +72,8 @@ def setup_driver():
             headless=False,
             use_subprocess=True
         )
+
+        driver.set_window_size(900, 450)
 
         driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
             "source": """
