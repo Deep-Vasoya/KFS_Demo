@@ -30,11 +30,9 @@ def random_delay(min_sec=1, max_sec=2):
 def human_like_interaction(driver):
     try:
         action = ActionChains(driver)
-        for _ in range(random.randint(1, 5)):
-            x = random.randint(-50, 50)
-            y = random.randint(-50, 50)
+        for _ in range(random.randint(1, 3)):
             try:
-                action.move_by_offset(x, y).perform()
+                action.move_by_offset(0, 0).perform()
             except Exception as e:
                 print(f"❌ Mouse move failed: {str(e).splitlines()[0]}")
             time.sleep(random.uniform(0.1, 0.3))
